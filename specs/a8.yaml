@@ -1,0 +1,41 @@
+agent: A8
+schema_version: 5
+display_name: '1'
+role_definition: '1'
+generation_template: "## 汇总\n{{refactor_report}}\nDELIVERY_STATUS: COMPLETE\n"
+message_contract:
+  inputs:
+  - name: refactor_report
+    source: children.by_id.E2.outputs.aggregate
+  outputs:
+  - name: artifact
+    block_type: ARTIFACT
+subtasks:
+  mode: dynamic
+  failure_policy: best_effort
+  items: []
+execution:
+  timeout_s: 60
+  max_attempts: 1
+  budget_tokens:
+dynamic_expand: true
+decomposition:
+  output_schema: subtask_plan_v1
+  allowed_agent_refs:
+  - A8.refactor
+  max_depth: 2
+  max_fanout: 8
+  require_acceptance_ref: false
+expandables:
+- id: E2
+  node_kind: dynamic_expand
+  max_instances: 8
+  instance_id_pattern: T{index}
+  inputs_template:
+  - name: target
+    source: plan.item.target
+  - name: rule
+    source: plan.item.rule
+  outputs:
+  - name: patch
+    block_type: DATA
