@@ -45,6 +45,8 @@ class SubtaskNode:
     inputs_template: tuple[InputBinding, ...] = ()
     outputs: tuple[OutputDecl, ...] = ()
     validator_key: str | None = None
+    level: int = 1
+    join_from: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

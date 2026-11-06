@@ -77,29 +77,77 @@ class Orchestrator:
         self._tree.create(root, parent_path="/", spec_ref=agent_id, node_kind=NodeKind.TASK)
         self._bus.emit(EventKind.RUN_STARTED, root, ts=self._started_at, agent=agent_id, run_id=self._run_id)
         self._emit_created(root)
-        self._create_children(root, spec)
+        self._create_children(root, spec, parent_level=0)
         return root
 
-    def _create_children(self, parent_path: str, spec: AgentSpec) -> None:
+    def _levels_for(self, spec: AgentSpec) -> int:
+        """动态展开层数：取 parameters.levels，受 decomposition.max_depth 与已声明展开点限制。"""
+        declared = max((n.level for n in spec.expandables if n.node_kind is NodeKind.DYNAMIC_EXPAND), default=1)
+        cap = spec.decomposition.max_depth if spec.decomposition else declared
+        requested = spec.parameters.get("levels", cap)
+        try:
+            levels = int(requested)
+        except (TypeError, ValueError):
+            levels = cap
+        return max(1, min(levels, cap, declared))
+
+    def _create_children(self, parent_path: str, spec: AgentSpec, *, parent_level: int) -> None:
         if spec.dynamic_expand:
+            levels = self._levels_for(spec)
+            if parent_level >= levels:
+                return
             decompose_path = f"{parent_path}/DECOMPOSE"
             self._tree.create(
-                decompose_path, parent_path=parent_path, spec_ref=spec.agent_id, node_kind=NodeKind.DECOMPOSE
+                decompose_path,
+                parent_path=parent_path,
+                spec_ref=spec.agent_id,
+                node_kind=NodeKind.DECOMPOSE,
+                level=parent_level,
             )
             self._emit_created(decompose_path)
-            for node in spec.expandables:
-                deps = node.deps or ("DECOMPOSE",)
-                path = f"{parent_path}/{node.id}"
+            next_node = next(
+                (
+                    n
+                    for n in spec.expandables
+                    if n.node_kind is NodeKind.DYNAMIC_EXPAND and n.level == parent_level + 1
+                ),
+                None,
+            )
+            if next_node is not None:
+                deps = next_node.deps or ("DECOMPOSE",)
+                path = f"{parent_path}/{next_node.id}"
                 self._tree.create(
-                    path, parent_path=parent_path, spec_ref=spec.agent_id, node_kind=node.node_kind, deps=deps
+                    path,
+                    parent_path=parent_path,
+                    spec_ref=spec.agent_id,
+                    node_kind=next_node.node_kind,
+                    deps=deps,
+                    level=next_node.level,
                 )
                 self._emit_created(path)
+            if parent_level == 0:
+                for node in spec.subtasks:
+                    path = f"{parent_path}/{node.id}"
+                    self._tree.create(
+                        path,
+                        parent_path=parent_path,
+                        spec_ref=spec.agent_id,
+                        node_kind=node.node_kind,
+                        deps=node.deps,
+                        level=0,
+                    )
+                    self._emit_created(path)
             return
 
         for node in spec.subtasks:
             path = f"{parent_path}/{node.id}"
             self._tree.create(
-                path, parent_path=parent_path, spec_ref=spec.agent_id, node_kind=node.node_kind, deps=node.deps
+                path,
+                parent_path=parent_path,
+                spec_ref=spec.agent_id,
+                node_kind=node.node_kind,
+                deps=node.deps,
+                level=0,
             )
             self._emit_created(path)
 
@@ -429,14 +477,8 @@ class Orchestrator:
     def _start_join(self, inst: Any) -> None:
         node = self._node_for(inst)
         output_name = node.outputs[0].name if node and node.outputs else "aggregate"
-        sources = self._tree.children(inst.task_path)
-        if not sources and inst.deps:
-            dep_inst = self._tree.lookup(f"{inst.parent_path}/{inst.deps[0]}")
-            if dep_inst is not None:
-                sources = self._tree.children(dep_inst.task_path)
-        child_output = self._child_output_name(
-            self._tree.lookup(f"{inst.parent_path}/{inst.deps[0]}") if inst.deps else None
-        )
+        sources, source_node = self._join_sources(inst, node)
+        child_output = self._child_output_name(source_node)
         report = join.evaluate(sources, output=child_output)
         artifact_id, digest = self._artifacts.put(report.to_text(), prefix="agg")
         self._to(inst, Status.RUNNING)
@@ -475,6 +517,7 @@ class Orchestrator:
             output_schema=dec.output_schema if dec else "subtask_plan_v1",
             allowed_agent_refs=dec.allowed_agent_refs if dec else (),
             max_fanout=dec.max_fanout if dec else 8,
+            parameters=dict(spec.parameters),
         )
         self._to(inst, Status.RUNNING)
         self._bus.emit(
@@ -501,6 +544,7 @@ class Orchestrator:
             )
         self._to(inst, Status.RUNNING)
         paths = []
+        spec = self._specs[inst.spec_ref]
         for i, item in enumerate(items, 1):
             sid = node.instance_id_pattern.format(index=i, key=str(item.get("id", i)))
             path = f"{inst.task_path}/{sid}"
@@ -510,9 +554,11 @@ class Orchestrator:
                 spec_ref=inst.spec_ref,
                 node_kind=NodeKind.TASK,
                 created_by="plan",
+                level=node.level,
             )
             created.plan_item = dict(item)
             self._emit_created(path)
+            self._create_children(path, spec, parent_level=node.level)
             paths.append(path)
         self._bus.emit(
             EventKind.EXPAND_PLANNED,
@@ -558,6 +604,39 @@ class Orchestrator:
             return node.outputs
         return spec.outputs
 
+    def _join_sources(self, inst: Any, node: SubtaskNode | None) -> tuple[list[Any], Any]:
+        """JOIN 的聚合来源。
+
+        - 优先使用 spec 的 `join_from` 显式声明（D-02 修正）：每个条目相对 JOIN 的父路径
+          解析到实例，取该实例的 children；叶子实例则取自身。
+        - 未声明时才回退到历史行为（首个 dep 的 children），仅为 a3–a7 兼容。
+        """
+        if node is not None and node.join_from:
+            sources: list[Any] = []
+            seen: set[str] = set()
+            first = None
+            for ref in node.join_from:
+                base = ref if ref.startswith("/") else f"{inst.parent_path}/{ref}"
+                target = self._tree.lookup(base)
+                if target is None:
+                    raise PlanError(
+                        f"JOIN {inst.task_path} 的聚合来源不存在: {base}", code="SPEC_JOIN_SOURCE"
+                    )
+                if first is None:
+                    first = target
+                children = self._tree.children(target.task_path) or [target]
+                for child in children:
+                    if child.task_path not in seen:
+                        seen.add(child.task_path)
+                        sources.append(child)
+            return sources, first
+
+        sources = self._tree.children(inst.task_path)
+        dep_inst = self._tree.lookup(f"{inst.parent_path}/{inst.deps[0]}") if inst.deps else None
+        if not sources and dep_inst is not None:
+            sources = self._tree.children(dep_inst.task_path)
+        return sources, dep_inst
+
     def _child_output_name(self, parent: Any) -> str:
         if parent is None:
             return "patch"
@@ -596,6 +675,7 @@ class Orchestrator:
             fanout_value=inst.fanout_value if inst else None,
             fanout_index=inst.fanout_index if inst else None,
             plan_item=inst.plan_item if inst else None,
+            children=self._tree.children,
         )
 
     def _snapshot_hash(self, snapshot: Mapping[str, Resolved]) -> str:

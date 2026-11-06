@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0
+
+- 新增 A9 多层动态展开场景（`parameters.levels` / `branch` 驱动三层 DECOMPOSE，默认 30 实例），CLI/GUI 可直接选择。
+- 新增跨层 DataRef：链式 `children.by_id`、`ancestors`、`owner`、`descendants.by_kind` 多级聚合。
+- JOIN 新增 `join_from` 显式聚合来源，修正 D-02“首个 dep children”隐式回退；A9 已显式声明。
+- Agent Spec 升到 `schema_version 6`（兼容 4–6），新增节点 `level` 字段；文档见 `docs/07-元数据定义.md`。
+
 ## 0.3.0
 
 - 新增机器可读 Agent Spec 规范：包内 `schemas/agent_spec.schema.json`，加载器接入 schema 校验，未知字段/类型/缺必填给中文路径错误；`[validation]` extras 可升级为严格校验。

@@ -9,18 +9,22 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from dataclasses import dataclass, field
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Mapping, Sequence
 
 from qihang.core.errors import DataRefError
 from qihang.core.model.runtime import Resolved, TaskInstance
 
 REF_RE = re.compile(r"^\{\{(.+?)\}\}$")
 IID = r"[A-Za-z][A-Za-z0-9_]*(?:\.\d+)*"
-BY_ID_RE = re.compile(rf"^by_id\.({IID})\.(outputs\..+)$")
+BY_ID_RE = re.compile(rf"^by_id\.({IID})\.(.+)$")
 SIBLING_RE = re.compile(rf"^({IID})\.(outputs\..+)$")
 UPSTREAM_RE = re.compile(rf"^(?:artifact|outputs)\.(.+)$")
+ANCESTOR_RE = re.compile(rf"^by_id\.({IID})\.(outputs\..+)$")
+DESCENDANTS_RE = re.compile(r"^by_kind\.([a-z_]+)\.(outputs\..+)$")
+OWNER_CHILD_RE = re.compile(rf"^({IID})\.(outputs\..+)$")
 
 
 def _digest(text: str) -> str:
@@ -37,6 +41,7 @@ class ResolveContext:
     fanout_value: str | None = None
     fanout_index: int | None = None
     plan_item: Mapping[str, Any] | None = None
+    children: Callable[[str], Sequence[TaskInstance]] | None = None
 
     def child(self, path: str) -> "ResolveContext":
         inst = self.lookup(path)
@@ -49,6 +54,7 @@ class ResolveContext:
             fanout_value=inst.fanout_value if inst else None,
             fanout_index=inst.fanout_index if inst else None,
             plan_item=inst.plan_item if inst else None,
+            children=self.children,
         )
 
 
@@ -78,6 +84,101 @@ def _from_instance(ref: str, target: str, output: str, ctx: ResolveContext) -> R
     )
 
 
+def _resolve_children(ref: str, rest: str, ctx: ResolveContext, *, allow_aggregate: bool) -> Resolved:
+    """`children.by_id.*` 支持跨层链式解析（A9 的 E1/T1/E2/T1.1/...）。"""
+    base = ctx.task_path
+    while True:
+        if rest.startswith("by_id."):
+            m = BY_ID_RE.match(rest)
+            if not m:
+                raise DataRefError(f"children.by_id 语法错误: {rest}", code="REF_SYNTAX")
+            target = f"{base}/{m.group(1)}"
+            rest = m.group(2)
+            if rest.startswith("children."):
+                base = target
+                rest = rest[len("children."):]
+                continue
+            if rest.startswith("*."):
+                if not allow_aggregate:
+                    raise DataRefError(
+                        "children.* 只能出现在 JOIN 聚合输入中", code="REF_AGGREGATE_CONTEXT"
+                    )
+                return Resolved(
+                    ref=ref, task_path=f"{target}/*", output=rest[2:], artifact_ref="", value_hash="", text=""
+                )
+            if not rest.startswith("outputs."):
+                raise DataRefError(f"实例引用必须指向 outputs.*: {rest}", code="REF_SYNTAX")
+            return _from_instance(ref, target, rest[len("outputs."):], ctx)
+        if rest.startswith("*."):
+            if not allow_aggregate:
+                raise DataRefError(
+                    "children.* 只能出现在 JOIN 聚合输入中", code="REF_AGGREGATE_CONTEXT"
+                )
+            return Resolved(
+                ref=ref, task_path=f"{base}/*", output=rest[2:], artifact_ref="", value_hash="", text=""
+            )
+        raise DataRefError(f"children 语法错误: {rest}", code="REF_SYNTAX")
+
+
+def _resolve_ancestors(ref: str, rest: str, ctx: ResolveContext) -> Resolved:
+    m = ANCESTOR_RE.match(rest)
+    if not m:
+        raise DataRefError(f"ancestors.by_id 语法错误: {rest}", code="REF_SYNTAX")
+    needed, tail = m.group(1), m.group(2)
+    current = ctx.task_path
+    while True:
+        parent = current.rsplit("/", 1)[0] or "/"
+        if parent == "/":
+            raise DataRefError(f"找不到上层节点 {needed}: {ctx.task_path}", code="REF_NOT_FOUND")
+        if parent.rsplit("/", 1)[-1] == needed:
+            return _from_instance(ref, parent, tail[len("outputs."):], ctx)
+        current = parent
+
+
+def _resolve_owner(ref: str, rest: str, ctx: ResolveContext) -> Resolved:
+    """子实例读取创建它的任务（展开节点所属父实例）下的已确认产物。
+
+    `/A9/E1/T1` 的 owner 是 `/A9`；`/A9/E1/T1/E2/T1.1` 的 owner 是 `/A9/E1/T1`。
+    """
+    m = OWNER_CHILD_RE.match(rest)
+    if not m:
+        raise DataRefError(f"owner 语法错误: {rest}", code="REF_SYNTAX")
+    parent_of_expand = ctx.task_path.rsplit("/", 1)[0] or "/"
+    owner = parent_of_expand.rsplit("/", 1)[0] or "/"
+    target = f"{owner}/{m.group(1)}"
+    return _from_instance(ref, target, m.group(2)[len("outputs."):], ctx)
+
+
+def _resolve_descendants(ref: str, rest: str, ctx: ResolveContext) -> Resolved:
+    m = DESCENDANTS_RE.match(rest)
+    if not m:
+        raise DataRefError(f"descendants 语法错误: {rest}", code="REF_SYNTAX")
+    if ctx.children is None:
+        raise DataRefError("当前上下文不支持 descendants 遍历", code="REF_CONTEXT")
+    kind, tail = m.group(1), m.group(2)
+    output = tail[len("outputs."):]
+    entries: dict[str, str] = {}
+
+    def walk(path: str) -> None:
+        for child in ctx.children(path):
+            if child.node_kind.value == kind:
+                # 多级汇总容忍失败：失败实例不进产物表，但会出现在其所在层聚合的 failures 中。
+                if child.status.value == "DONE":
+                    art = child.outputs.get(output)
+                    if art is None:
+                        raise DataRefError(
+                            f"字段不存在: {child.task_path}.outputs.{output}", code="REF_FIELD_MISSING"
+                        )
+                    entries[child.task_path] = ctx.artifact_text(art.artifact_id)
+            walk(child.task_path)
+
+    walk(ctx.task_path)
+    text = json.dumps(entries, ensure_ascii=False, sort_keys=True)
+    return Resolved(
+        ref=ref, task_path=f"{ctx.task_path}/**", output=output, artifact_ref="", value_hash=_digest(text), text=text
+    )
+
+
 def resolve_ref(ref: str, ctx: ResolveContext, *, allow_aggregate: bool = False) -> Resolved:
     expr = parse_expr(ref)
     scope, _, rest = expr.partition(".")
@@ -89,22 +190,13 @@ def resolve_ref(ref: str, ctx: ResolveContext, *, allow_aggregate: bool = False)
     elif scope == "parent":
         target = ctx.task_path.rsplit("/", 1)[0] or "/"
     elif scope == "children":
-        if rest.startswith("by_id."):
-            m = BY_ID_RE.match(rest)
-            if not m:
-                raise DataRefError(f"children.by_id 语法错误: {rest}", code="REF_SYNTAX")
-            target = f"{ctx.task_path}/{m.group(1)}"
-            rest = m.group(2)
-        elif rest.startswith("*."):
-            if not allow_aggregate:
-                raise DataRefError(
-                    "children.* 只能出现在 JOIN 聚合输入中", code="REF_AGGREGATE_CONTEXT"
-                )
-            return Resolved(
-                ref=ref, task_path=f"{ctx.task_path}/*", output=rest[2:], artifact_ref="", value_hash="", text=""
-            )
-        else:
-            raise DataRefError(f"children 语法错误: {rest}", code="REF_SYNTAX")
+        return _resolve_children(ref, rest, ctx, allow_aggregate=allow_aggregate)
+    elif scope == "ancestors":
+        return _resolve_ancestors(ref, rest, ctx)
+    elif scope == "owner":
+        return _resolve_owner(ref, rest, ctx)
+    elif scope == "descendants":
+        return _resolve_descendants(ref, rest, ctx)
     elif scope == "siblings":
         m = SIBLING_RE.match(rest)
         if not m:

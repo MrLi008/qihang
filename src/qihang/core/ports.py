@@ -72,6 +72,7 @@ class DecomposeRequest:
     output_schema: str = "subtask_plan_v1"
     allowed_agent_refs: Sequence[str] = ()
     max_fanout: int = 8
+    parameters: Mapping[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)

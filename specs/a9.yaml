@@ -1,0 +1,106 @@
+agent: A9
+schema_version: 6
+display_name: 多层动态扩展
+role_definition: |
+  验证多层动态 DECOMPOSE：根层拆出第一层，第一层实例内部再拆第二层，
+  第二层实例内部再拆第三层；每层实例数由 parameters.branch 决定，层数由 parameters.levels 决定。
+acceptance_criteria:
+  - 第 1/2/3 层实例数分别为 branch / branch^2 / branch^3
+  - 根汇总同时包含第 1/2/3 层的 aggregation 文本
+  - 任一深层实例失败时，该层聚合 coverage 减少且 failures 带出路径
+parameters:
+  levels: 3
+  branch: 2
+  echo_prompt: true
+generation_template: |
+  ## A9 多层汇总
+  第 1 层聚合（E1）：
+  {{level1}}
+  全部动态展开层聚合（E1/E2/E3）：
+  {{all_levels}}
+  全部任务 patch（T1..T3）：
+  {{all_patches}}
+  显式 JOIN 聚合（J1）：
+  {{joined}}
+  DELIVERY_STATUS: COMPLETE
+message_contract:
+  inputs:
+    - name: level1
+      source: children.by_id.E1.outputs.aggregate
+    - name: all_levels
+      source: descendants.by_kind.dynamic_expand.outputs.aggregate
+    - name: all_patches
+      source: descendants.by_kind.task.outputs.patch
+    - name: joined
+      source: children.by_id.J1.outputs.aggregate
+  outputs:
+    - name: artifact
+      block_type: ARTIFACT
+subtasks:
+  mode: static
+  failure_policy: best_effort
+  items:
+    - id: J1
+      node_kind: join
+      deps: [DECOMPOSE, E1]
+      join_from: [E1]
+      outputs:
+        - name: aggregate
+          block_type: DATA
+decomposition:
+  output_schema: subtask_plan_v1
+  allowed_agent_refs: [A9]
+  max_depth: 3
+  max_fanout: 8
+  require_acceptance_ref: false
+dynamic_expand: true
+expandables:
+  - id: E1
+    node_kind: dynamic_expand
+    level: 1
+    max_instances: 8
+    instance_id_pattern: "{key}"
+    inputs_template:
+      - name: target
+        source: plan.item.target
+      - name: rule
+        source: plan.item.rule
+      - name: parent_plan
+        source: owner.DECOMPOSE.outputs.plan
+    outputs:
+      - name: patch
+        block_type: DATA
+  - id: E2
+    node_kind: dynamic_expand
+    level: 2
+    max_instances: 8
+    instance_id_pattern: "{key}"
+    inputs_template:
+      - name: target
+        source: plan.item.target
+      - name: rule
+        source: plan.item.rule
+      - name: parent_plan
+        source: owner.DECOMPOSE.outputs.plan
+    outputs:
+      - name: patch
+        block_type: DATA
+  - id: E3
+    node_kind: dynamic_expand
+    level: 3
+    max_instances: 8
+    instance_id_pattern: "{key}"
+    inputs_template:
+      - name: target
+        source: plan.item.target
+      - name: rule
+        source: plan.item.rule
+      - name: parent_plan
+        source: owner.DECOMPOSE.outputs.plan
+    outputs:
+      - name: patch
+        block_type: DATA
+execution:
+  timeout_s: 60
+  max_attempts: 1
+  budget_tokens: null

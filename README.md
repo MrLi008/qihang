@@ -78,7 +78,7 @@ python -m pip install -e ".[ui-qt]"     :: GUI（固定 PyQt6 6.6.1 / Qt 6.6.2�
 |---|---|---|
 | 免安装（推荐给临时试用） | `run.cmd run --scenario a4` / `gui.cmd` | 不改环境、不需要网络 |
 | editable 安装 | `pip install -e ".[ui-qt]"` 后 `qihang run` / `qihang-gui` | 需要 `python -m` / `qihang` 命令 / 长期开发 |
-| wheel 安装 | `pip install qihang-0.3.0-py3-none-any.whl[ui-qt]` | 离线分发、内网源 |
+| wheel 安装 | `pip install qihang-0.4.0-py3-none-any.whl[ui-qt]` | 离线分发、内网源 |
 
 依赖分组：core-only = `ruamel.yaml`；`validation` = `jsonschema`（可选，启用严格 schema 校验）；`ui-qt` = `PyQt6==6.6.1` + `PyQt6-Qt6==6.6.2`；`dev` = pytest / pytest-qt / coverage / hypothesis / ruff / build / twine。
 
@@ -132,6 +132,16 @@ python run.py --gui --scenario A7 --delay 0.02 --bench
 
 不达标时 JSON 的 `bottleneck_hint` 会指出是事件批节奏、DAG 布局重排还是实例树整批更新。
 
+### 多层动态展开 A9
+
+A9 用 `parameters.levels=3` / `branch=2` 驱动三层 DECOMPOSE，任务实例 2/4/8，总实例 30；根汇总同时带出三层聚合与 14 个 task patch，J1 用 `join_from: [E1]` 显式声明聚合来源（D-02）。
+
+```bat
+python run.py run --scenario a9 --delay 0.01
+```
+
+深层失败注入：`python run.py run --scenario a9 --delay 0.01 --fail T1.1.2`（该层 coverage 降为 1/2，根仍 DONE 并带 failures）。
+
 ## CLI 输出
 
 ```text
@@ -151,7 +161,7 @@ python run.py --gui --scenario A7 --delay 0.02 --bench
 code/
 ├─ run.py / run.cmd / gui.cmd     # 零安装启动入口
 ├─ pyproject.toml                 # core-only / ui-qt / dev 三组依赖
-├─ specs/                         # A3/A4/A5/A6/A7 定义（开发用；发布副本在 src/qihang/specs）
+├─ specs/                         # A3–A7/A9 定义（开发用；发布副本在 src/qihang/specs）
 ├─ src/qihang/
 │  ├─ core/                       # 编排内核（零 PyQt）
 │  ├─ app/                        # 应用服务（含 spec 列表/校验/落盘）

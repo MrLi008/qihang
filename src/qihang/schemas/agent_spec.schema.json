@@ -16,9 +16,9 @@
     "schema_version": {
       "type": "integer",
       "minimum": 4,
-      "maximum": 5,
+      "maximum": 6,
       "default": 5,
-      "description": "定义版本；缺省按 5 解析。"
+      "description": "定义版本；当前 6，兼容 4–6，缺省按 5 解析。"
     },
     "display_name": {"type": "string", "default": "", "description": "界面展示名。"},
     "role_definition": {"type": "string", "description": "角色定义与判断标准（自然语言）。"},
@@ -128,7 +128,19 @@
           "type": "array",
           "items": {"$ref": "#/$defs/outputDecl"}
         },
-        "validator_key": {"type": "string", "minLength": 1}
+        "validator_key": {"type": "string", "minLength": 1},
+        "level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8,
+          "default": 1,
+          "description": "动态展开层级：根层为 1，子实例内展开依次 +1；仅 dynamic_expand 使用。"
+        },
+        "join_from": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "description": "JOIN 聚合来源（相对 JOIN 父路径或绝对实例路径）；显式声明后不再回退首个 dep（D-02）。"
+        }
       }
     },
     "subtaskBlock": {

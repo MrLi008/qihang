@@ -89,7 +89,7 @@ def build_new_agent_spec(
     role = role_definition.strip() or f"你是 {agent_id} Agent。"
     data: dict[str, Any] = {
         "agent": agent_id,
-        "schema_version": 5,
+        "schema_version": 6,
         "display_name": display_name.strip() or agent_id,
         "role_definition": role,
         "generation_template": "## 执行\n{{context}}\nDELIVERY_STATUS: COMPLETE\n",

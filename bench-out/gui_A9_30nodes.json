@@ -1,0 +1,43 @@
+{
+  "scenario": "A9",
+  "status": "DONE",
+  "instances": 30,
+  "delay_s": 0.01,
+  "wall_ms": 328,
+  "heartbeat_ms": {
+    "p50": 10.07,
+    "p99": 26.91,
+    "max": 26.91,
+    "samples": 3
+  },
+  "dag_render_ms": {
+    "p50": 3.36,
+    "p99": 14.73,
+    "max": 14.73,
+    "samples": 3
+  },
+  "fps_estimate": 9.2,
+  "tree_batch_ms": {
+    "p50": 0.84,
+    "p99": 1.99,
+    "max": 1.99,
+    "samples": 3,
+    "total": 3.22
+  },
+  "events": {
+    "total": 249,
+    "drain_batches": 3,
+    "max_batch": 128,
+    "avg_batch": 83.0
+  },
+  "memory_peak_mb": 0.5,
+  "thresholds": {
+    "heartbeat_p99_ms": 100,
+    "fps": 30
+  },
+  "judgement": {
+    "heartbeat": "达标",
+    "fps": "不达标"
+  },
+  "bottleneck_hint": "DAG 布局重排：每批新增节点触发 _relayout 全量重排与边重算"
+}

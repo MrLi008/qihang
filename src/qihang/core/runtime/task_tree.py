@@ -41,6 +41,7 @@ class TaskTree:
         node_kind: NodeKind,
         created_by: str = "static",
         deps: tuple[str, ...] = (),
+        level: int = 0,
     ) -> TaskInstance:
         if task_path in self._instances:
             raise ValueError(f"task_path 重复: {task_path}")
@@ -51,6 +52,7 @@ class TaskTree:
             node_kind=node_kind,
             created_by=created_by,
             deps=deps,
+            level=level,
         )
         self._instances[task_path] = inst
         self._children.setdefault(parent_path, []).append(task_path)

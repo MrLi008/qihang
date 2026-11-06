@@ -51,6 +51,7 @@ class TaskInstance:
     fanout_value: str | None = None
     fanout_index: int | None = None
     plan_item: dict | None = None
+    level: int = 0
 
     @property
     def is_terminal(self) -> bool:

@@ -69,6 +69,76 @@ def test_fanout_and_project() -> None:
     assert resolve_ref("{{project.constraints}}", ctx).text == "python3.11"
 
 
+def _multilevel_fixture() -> tuple[TaskTree, BlobStore, ResolveContext]:
+    tree = TaskTree()
+    store = BlobStore()
+    for path, parent, kind in [
+        ("/A9", "/", NodeKind.TASK),
+        ("/A9/DECOMPOSE", "/A9", NodeKind.DECOMPOSE),
+        ("/A9/E1", "/A9", NodeKind.DYNAMIC_EXPAND),
+        ("/A9/E1/T1", "/A9/E1", NodeKind.TASK),
+        ("/A9/E1/T1/DECOMPOSE", "/A9/E1/T1", NodeKind.DECOMPOSE),
+        ("/A9/E1/T1/E2", "/A9/E1/T1", NodeKind.DYNAMIC_EXPAND),
+        ("/A9/E1/T1/E2/T1.1", "/A9/E1/T1/E2", NodeKind.TASK),
+        ("/A9/E1/T1/E2/T1.1/DECOMPOSE", "/A9/E1/T1/E2/T1.1", NodeKind.DECOMPOSE),
+        ("/A9/E1/T1/E2/T1.1/E3", "/A9/E1/T1/E2/T1.1", NodeKind.DYNAMIC_EXPAND),
+        ("/A9/E1/T1/E2/T1.1/E3/T1.1.1", "/A9/E1/T1/E2/T1.1/E3", NodeKind.TASK),
+    ]:
+        tree.create(path, parent_path=parent, spec_ref="A9", node_kind=kind)
+    _done(tree, "/A9/DECOMPOSE", "plan", "root-plan", store)
+    _done(tree, "/A9/E1/T1/DECOMPOSE", "plan", "l1-plan", store)
+    _done(tree, "/A9/E1/T1/E2/T1.1/DECOMPOSE", "plan", "l2-plan", store)
+    _done(tree, "/A9/E1/T1/E2/T1.1/E3/T1.1.1", "patch", "leaf-patch", store)
+    _done(tree, "/A9/E1/T1", "patch", "l1-patch", store)
+    _done(tree, "/A9/E1/T1/E2/T1.1/E3", "aggregate", '{"coverage":"2/2"}', store)
+    ctx = ResolveContext(
+        "R-T", "/A9", tree.lookup, store.get, children=tree.children
+    )
+    return tree, store, ctx
+
+
+def test_multilevel_children_chain_resolves_leaf_artifact() -> None:
+    _, _, ctx = _multilevel_fixture()
+    ref = "{{children.by_id.E1.children.by_id.T1.children.by_id.E2.children.by_id.T1.1.children.by_id.E3.outputs.aggregate}}"
+    resolved = resolve_ref(ref, ctx)
+    assert resolved.task_path == "/A9/E1/T1/E2/T1.1/E3"
+    assert resolved.text == '{"coverage":"2/2"}'
+
+
+def test_owner_scope_reads_upper_confirmed_plan() -> None:
+    _, _, ctx = _multilevel_fixture()
+    deep = ResolveContext(
+        run_id="R-T",
+        task_path="/A9/E1/T1/E2/T1.1/E3/T1.1.1",
+        lookup=ctx.lookup,
+        artifact_text=ctx.artifact_text,
+        children=ctx.children,
+    )
+    assert resolve_ref("{{owner.DECOMPOSE.outputs.plan}}", deep).text == "l2-plan"
+
+
+def test_ancestors_scope_finds_nearest_done_ancestor() -> None:
+    _, _, ctx = _multilevel_fixture()
+    deep = ResolveContext(
+        run_id="R-T",
+        task_path="/A9/E1/T1/E2/T1.1/E3/T1.1.1",
+        lookup=ctx.lookup,
+        artifact_text=ctx.artifact_text,
+        children=ctx.children,
+    )
+    assert resolve_ref("{{ancestors.by_id.T1.outputs.patch}}", deep).text == "l1-patch"
+
+
+def test_descendants_aggregate_across_levels_skips_failed() -> None:
+    tree, _, ctx = _multilevel_fixture()
+    tree.transition("/A9/E1/T1/E2/T1.1", Status.READY)
+    tree.transition("/A9/E1/T1/E2/T1.1", Status.RUNNING)
+    tree.transition("/A9/E1/T1/E2/T1.1", Status.FAILED)
+    text = resolve_ref("{{descendants.by_kind.task.outputs.patch}}", ctx).text
+    assert "/A9/E1/T1/E2/T1.1/E3/T1.1.1" in text
+    assert '"/A9/E1/T1/E2/T1.1":' not in text
+
+
 def test_not_done_target_is_rejected() -> None:
     tree, store, _ = _fixture()
     ctx = ResolveContext("R-T", "/A4/E1/S2.1", tree.lookup, store.get)

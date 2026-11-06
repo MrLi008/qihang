@@ -41,6 +41,7 @@ def test_agent_list_is_loaded_from_specs_dir(app) -> None:
     window = MainWindow(ThemeManager("light"), specs_dir=SPECS_DIR, runs_dir=default_runs_dir())
     names = window.scenario_names
     assert "A7" in names
+    assert "A9" in names
     assert "A4" in names
     window.close()
 
@@ -153,4 +154,20 @@ def test_a7_500_nodes_and_bench_metrics(app) -> None:
     assert report["heartbeat_ms"]["samples"] > 0
     assert report["dag_render_ms"]["samples"] > 0
     assert report["tree_batch_ms"]["max"] is not None
+    window.close()
+
+
+def test_a9_multilevel_runs_in_gui(app) -> None:
+    theme = ThemeManager("light")
+    theme.apply(app)
+    window = MainWindow(theme, specs_dir=SPECS_DIR, runs_dir=default_runs_dir(), delay_s=0.01)
+    window.set_scenario("A9")
+    assert window._agent.currentText() == "A9"
+    window.show()
+    window.start_run()
+    _wait(window, timeout_ms=30_000)
+
+    assert len(window._tree_model.known_paths) == 30
+    assert "/A9/E1/T1/E2/T1.1/E3/T1.1.1" in window._tree_model.known_paths
+    assert "/A9/E1/T1/E2/T1.1/E3/T1.1.1" in window._scene.known_paths
     window.close()

@@ -158,7 +158,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     run = sub.add_parser("run", help="跑一个 mock 场景")
-    run.add_argument("--scenario", choices=["a3", "a4", "a5", "a6", "a7", "all"], default="a4")
+    run.add_argument("--scenario", choices=["a3", "a4", "a5", "a6", "a7", "a9", "all"], default="a4")
     run.add_argument("--delay", type=float, default=1.0, help="每个任务的基础耗时（秒，默认 1.0）")
     run.add_argument("--fail", action="append", default=[], help="注入失败的任务路径后缀，如 S2.3")
     run.add_argument("--specs-dir", default=str(default_specs_dir()))
@@ -167,7 +167,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "run":
-        scenarios = ["A3", "A4", "A5", "A6"] if args.scenario == "all" else [args.scenario.upper()]
+        scenarios = ["A3", "A4", "A5", "A6", "A9"] if args.scenario == "all" else [args.scenario.upper()]
         results = []
         try:
             for i, agent in enumerate(scenarios, 1):
@@ -178,7 +178,7 @@ def main(argv: list[str] | None = None) -> int:
             print("请修正 spec 后重试；字段说明见 docs/07-元数据定义.md。", file=sys.stderr)
             return 3
         except KeyError as exc:
-            print(f"场景不存在：{exc}。可选：a3/a4/a5/a6/a7/all", file=sys.stderr)
+            print(f"场景不存在：{exc}。可选：a3/a4/a5/a6/a7/a9/all", file=sys.stderr)
             return 3
         if len(results) > 1:
             print("\n汇总：")

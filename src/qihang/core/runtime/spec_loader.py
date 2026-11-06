@@ -91,6 +91,8 @@ def _node(raw: Mapping[str, Any]) -> SubtaskNode:
         inputs_template=_bindings(raw.get("inputs_template")),
         outputs=_outputs(raw.get("outputs")),
         validator_key=str(raw["validator_key"]) if raw.get("validator_key") else None,
+        level=int(raw.get("level", 1)),
+        join_from=tuple(str(x) for x in raw.get("join_from", ()) or ()),
     )
 
 
@@ -122,6 +124,9 @@ def parse_spec(data: Mapping[str, Any], *, source: str = "<inline>") -> AgentSpe
         seen[node.id] = f"expandables[{index}]"
 
     known = set(ids)
+    if data.get("dynamic_expand"):
+        # 根层 DECOMPOSE 由编排器合成；静态节点可显式依赖它（A9 的 J1）。
+        known.add("DECOMPOSE")
     for index, node in enumerate(items):
         for dep_index, dep in enumerate(node.deps):
             if dep not in known:
@@ -140,6 +145,34 @@ def parse_spec(data: Mapping[str, Any], *, source: str = "<inline>") -> AgentSpe
     for index, node in enumerate(expandables):
         if node.node_kind in (NodeKind.EXPAND, NodeKind.DYNAMIC_EXPAND):
             _check_pattern(node, f"expandables[{index}]", source)
+        if node.node_kind is NodeKind.DYNAMIC_EXPAND:
+            if node.level in (0, None):
+                raise SpecError(
+                    f"{source}: expandables[{index}].level 必须 >= 1", code="SPEC_LEVEL"
+                )
+            if node.level > 8:
+                raise SpecError(
+                    f"{source}: expandables[{index}].level 超出范围 1–8（当前 {node.level}）",
+                    code="SPEC_LEVEL",
+                )
+
+    for index, node in enumerate(items):
+        if node.join_from and node.node_kind is not NodeKind.JOIN:
+            raise SpecError(
+                f"{source}: subtasks.items[{index}].join_from 只允许用于 join 节点",
+                code="SPEC_JOIN_SOURCE",
+            )
+
+    dynamic_nodes = [n for n in expandables if n.node_kind is NodeKind.DYNAMIC_EXPAND]
+    if dynamic_nodes:
+        levels = [n.level for n in dynamic_nodes]
+        if 1 not in levels:
+            raise SpecError(
+                f"{source}: 动态展开点必须声明 level=1（根层），当前 {levels}",
+                code="SPEC_LEVEL",
+            )
+        if len(set(levels)) != len(levels):
+            raise SpecError(f"{source}: 动态展开点 level 重复：{levels}", code="SPEC_LEVEL")
 
     dec_raw = data.get("decomposition")
     decomposition = None

@@ -74,6 +74,8 @@ class MockExecutor:
         return f"#>----#{block_type}:{block_id}\n{body}\n#<----#{block_type}:{block_id}"
 
     def _body_for(self, output: OutputDecl, req: GenerateRequest) -> str:
+        if output.name == "artifact" and req.parameters.get("echo_prompt"):
+            return f"## {req.task_path}\n{req.rendered_prompt}\nDELIVERY_STATUS: COMPLETE"
         if output.name == "file_list":
             list_size = req.parameters.get("list_size")
             if list_size is not None:
@@ -125,7 +127,25 @@ class MockExecutor:
     def decompose(self, req: DecomposeRequest) -> ExecutionResult:
         delay = self._delay(req.task_path)
         self._clock.sleep(delay)
-        doc = {"plan_id": f"{req.task_path.strip('/')}-P1", "subtasks": [dict(x) for x in self._plan_items]}
+        branch = req.parameters.get("branch")
+        if branch is not None:
+            count = max(1, int(branch))
+            token = req.task_path.strip("/").replace("/", "-")
+            owner = req.task_path.rsplit("/", 1)[0] or f"/{req.agent_id}"
+            owner_name = owner.rsplit("/", 1)[-1]
+            base = "T" if owner_name == req.agent_id else owner_name
+            items = [
+                {
+                    "id": f"{base}.{i}" if base != "T" else f"T{i}",
+                    "agent_ref": req.agent_id,
+                    "target": f"{token}-item{i}",
+                    "rule": f"第 {i} 个分支（层 {req.task_path}）",
+                }
+                for i in range(1, count + 1)
+            ]
+        else:
+            items = [dict(x) for x in self._plan_items]
+        doc = {"plan_id": f"{req.task_path.strip('/')}-P1", "subtasks": items}
         text = self._block("PLAN", "plan", json.dumps(doc, ensure_ascii=False, indent=2))
         return ExecutionResult(
             text=text,
