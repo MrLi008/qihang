@@ -1,0 +1,42 @@
+{
+  "spike": "S-1",
+  "generated_at": "2026-11-05T18:17:22+08:00",
+  "python": "3.11.7 (CPython)",
+  "parameters": {
+    "nodes": 5000,
+    "repeat": 3,
+    "incremental_nodes": 200,
+    "expands": 50
+  },
+  "results": {
+    "actual_nodes": 5000,
+    "root_children": 50,
+    "build_ms": [
+      35.759,
+      36.918,
+      36.438
+    ],
+    "build_ms_p50": 36.438,
+    "build_nodes_per_s": 137469.5,
+    "lookup_us_p50": 0.1,
+    "lookup_us_p99": 0.3,
+    "incremental_ms": [
+      0.547,
+      0.678,
+      0.482
+    ],
+    "incremental_ms_p50": 0.547,
+    "incremental_ms_p99": 0.678,
+    "snapshot_ms_p50": 68.658,
+    "tree_peak_mib": 2.49
+  },
+  "budgets": {
+    "incremental_ms_p99_max": 30.0,
+    "gui_heartbeat_p99_max": 100.0,
+    "gui_800_fps_min": 30
+  },
+  "verdict": {
+    "incremental_data_side": "PASS",
+    "gui_side": "NOT_MEASURED（需要 QGraphicsScene 渲染，本轮只交付空壳）"
+  }
+}

@@ -1,0 +1,40 @@
+agent: A6
+schema_version: 5
+display_name: 重构
+role_definition: |
+  你负责运行期动态拆解重构任务，并汇总子任务结果。
+dynamic_expand: true
+generation_template: |
+  ## 重构汇总
+  {{refactor_report}}
+  DELIVERY_STATUS: COMPLETE
+message_contract:
+  inputs:
+    - name: refactor_report
+      source: children.by_id.E2.outputs.aggregate
+  outputs:
+    - name: artifact
+      block_type: ARTIFACT
+subtasks:
+  mode: dynamic
+  failure_policy: best_effort
+  items: []
+decomposition:
+  output_schema: subtask_plan_v1
+  allowed_agent_refs: [A6.refactor]
+  max_depth: 2
+  max_fanout: 8
+  require_acceptance_ref: false
+expandables:
+  - id: E2
+    node_kind: dynamic_expand
+    max_instances: 8
+    instance_id_pattern: "T{index}"
+    inputs_template:
+      - name: target
+        source: plan.item.target
+      - name: rule
+        source: plan.item.rule
+    outputs:
+      - name: patch
+        block_type: DATA

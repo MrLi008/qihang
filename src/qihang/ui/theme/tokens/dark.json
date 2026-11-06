@@ -1,0 +1,25 @@
+{
+  "name": "dark",
+  "color": {
+    "canvas": "#15181d",
+    "surface": "#1d2129",
+    "surface_alt": "#262b34",
+    "border": "#343a45",
+    "text": "#e5e8ee",
+    "muted": "#8a93a3",
+    "accent": "#5b93ff",
+    "status": {
+      "pending": "#6b7480",
+      "ready": "#5b93ff",
+      "running": "#e0a13a",
+      "check": "#a78bfa",
+      "done": "#3ecf8e",
+      "failed": "#f06565",
+      "blocked": "#e08a4a",
+      "stale": "#8a93a3",
+      "cancelled": "#6b7480"
+    }
+  },
+  "space": { "xs": 4, "sm": 8, "md": 12, "lg": 16 },
+  "radius": { "node": 8, "panel": 6 }
+}

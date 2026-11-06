@@ -1,0 +1,67 @@
+QWidget {
+    background: {{color.canvas}};
+    color: {{color.text}};
+    font-family: "Microsoft YaHei UI", "Microsoft YaHei", "Segoe UI", "Noto Sans CJK SC", sans-serif;
+    font-size: 12px;
+}
+
+QMainWindow::separator {
+    background: {{color.border}};
+    width: {{space.xs}}px;
+    height: {{space.xs}}px;
+}
+
+QToolBar {
+    background: {{color.surface}};
+    border-bottom: 1px solid {{color.border}};
+    padding: {{space.xs}}px;
+    spacing: {{space.sm}}px;
+}
+
+QTreeView, QGraphicsView, QPlainTextEdit {
+    background: {{color.surface}};
+    border: 1px solid {{color.border}};
+    border-radius: {{radius.panel}}px;
+    padding: {{space.xs}}px;
+}
+
+QHeaderView::section {
+    background: {{color.surface_alt}};
+    color: {{color.muted}};
+    border: none;
+    border-bottom: 1px solid {{color.border}};
+    padding: {{space.xs}}px {{space.sm}}px;
+}
+
+QPushButton {
+    background: {{color.surface_alt}};
+    color: {{color.text}};
+    border: 1px solid {{color.border}};
+    border-radius: {{radius.panel}}px;
+    padding: {{space.xs}}px {{space.md}}px;
+}
+
+QPushButton:hover {
+    border-color: {{color.accent}};
+}
+
+QPushButton:disabled {
+    color: {{color.muted}};
+}
+
+QLabel {
+    background: transparent;
+    color: {{color.text}};
+}
+
+QComboBox, QDoubleSpinBox {
+    background: {{color.surface}};
+    color: {{color.text}};
+    border: 1px solid {{color.border}};
+    border-radius: {{radius.panel}}px;
+    padding: {{space.xs}}px {{space.sm}}px;
+}
+
+QSplitter::handle {
+    background: {{color.border}};
+}

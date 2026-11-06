@@ -1,0 +1,82 @@
+
+=== Run R-001-A4 · agent A4 ===
+[001] RUN_STARTED       /A4                      agent=A4
+[002] INSTANCE_CREATED  /A4                      task by=static
+[003] INSTANCE_CREATED  /A4/S1                   task by=static
+[004] INSTANCE_CREATED  /A4/E1                   expand by=static
+[005] INSTANCE_CREATED  /A4/J1                   join by=static
+[006] INSTANCE_CREATED  /A4/S3                   task by=static
+[007] INSTANCE_STATE    /A4/S1                   PENDING -> READY
+[008] INSTANCE_STATE    /A4/S1                   READY -> RUNNING
+[009] LLM_REQUEST       /A4/S1                   executor=mock outputs=['file_list']
+[010] LLM_RESPONSE      /A4/S1                   latency=953ms tokens=29
+[011] BLOCK_PARSED      /A4/S1                   
+[012] ARTIFACT_WRITTEN  /A4/S1                   file_list hash=9a47b8ad7e4e size=37
+[013] INSTANCE_STATE    /A4/S1                   RUNNING -> CHECK
+[014] INSTANCE_STATE    /A4/S1                   CHECK -> DONE (968ms)
+[015] INSTANCE_STATE    /A4/E1                   PENDING -> READY
+[016] INSTANCE_STATE    /A4/E1                   READY -> RUNNING
+[017] INSTANCE_CREATED  /A4/E1/S2.1              task by=fanout
+[018] INSTANCE_CREATED  /A4/E1/S2.2              task by=fanout
+[019] INSTANCE_CREATED  /A4/E1/S2.3              task by=fanout
+[020] EXPAND_PLANNED    /A4/E1                   static count=3 slots=['S2.1', 'S2.2', 'S2.3']
+[021] INSTANCE_STATE    /A4/E1/S2.1              PENDING -> READY
+[022] INSTANCE_STATE    /A4/E1/S2.2              PENDING -> READY
+[023] INSTANCE_STATE    /A4/E1/S2.3              PENDING -> READY
+[024] INSTANCE_STATE    /A4/E1/S2.1              READY -> RUNNING
+[025] LLM_REQUEST       /A4/E1/S2.1              executor=mock outputs=['patch']
+[026] INSTANCE_STATE    /A4/E1/S2.2              READY -> RUNNING
+[027] LLM_REQUEST       /A4/E1/S2.2              executor=mock outputs=['patch']
+[028] INSTANCE_STATE    /A4/E1/S2.3              READY -> RUNNING
+[029] LLM_REQUEST       /A4/E1/S2.3              executor=mock outputs=['patch']
+[030] LLM_RESPONSE      /A4/E1/S2.1              latency=919ms tokens=52
+[031] BLOCK_PARSED      /A4/E1/S2.1              
+[032] ARTIFACT_WRITTEN  /A4/E1/S2.1              patch hash=369bd62c7f9d size=132
+[033] INSTANCE_STATE    /A4/E1/S2.1              RUNNING -> CHECK
+[034] INSTANCE_STATE    /A4/E1/S2.1              CHECK -> DONE (938ms)
+[035] LLM_RESPONSE      /A4/E1/S2.2              latency=945ms tokens=52
+[036] BLOCK_PARSED      /A4/E1/S2.2              
+[037] ARTIFACT_WRITTEN  /A4/E1/S2.2              patch hash=c4fb04576423 size=133
+[038] INSTANCE_STATE    /A4/E1/S2.2              RUNNING -> CHECK
+[039] INSTANCE_STATE    /A4/E1/S2.2              CHECK -> DONE (938ms)
+[040] LLM_RESPONSE      /A4/E1/S2.3              latency=1010ms tokens=53
+[041] BLOCK_PARSED      /A4/E1/S2.3              
+[042] ARTIFACT_WRITTEN  /A4/E1/S2.3              patch hash=a906e4597444 size=135
+[043] INSTANCE_STATE    /A4/E1/S2.3              RUNNING -> CHECK
+[044] INSTANCE_STATE    /A4/E1/S2.3              CHECK -> DONE (1032ms)
+[045] JOIN_DONE         /A4/E1                   expand coverage=3/3 failures=[]
+[046] INSTANCE_STATE    /A4/E1                   RUNNING -> DONE (1047ms)
+[047] INSTANCE_STATE    /A4/J1                   PENDING -> READY
+[048] INSTANCE_STATE    /A4/J1                   READY -> RUNNING
+[049] ARTIFACT_WRITTEN  /A4/J1                   aggregate hash=7b85b64aef16 size=781
+[050] JOIN_DONE         /A4/J1                   join coverage=3/3 failures=[]
+[051] INSTANCE_STATE    /A4/J1                   RUNNING -> CHECK
+[052] INSTANCE_STATE    /A4/J1                   CHECK -> DONE (0ms)
+[053] INSTANCE_STATE    /A4/S3                   PENDING -> READY
+[054] INSTANCE_STATE    /A4/S3                   READY -> RUNNING
+[055] LLM_REQUEST       /A4/S3                   executor=mock outputs=['artifact']
+[056] LLM_RESPONSE      /A4/S3                   latency=952ms tokens=57
+[057] BLOCK_PARSED      /A4/S3                   
+[058] ARTIFACT_WRITTEN  /A4/S3                   artifact hash=596f6f69ac45 size=140
+[059] INSTANCE_STATE    /A4/S3                   RUNNING -> CHECK
+[060] INSTANCE_STATE    /A4/S3                   CHECK -> DONE (953ms)
+[061] INSTANCE_STATE    /A4                      PENDING -> READY
+[062] INSTANCE_STATE    /A4                      READY -> RUNNING
+[063] LLM_REQUEST       /A4                      executor=mock outputs=['artifact']
+[064] LLM_RESPONSE      /A4                      latency=806ms tokens=278
+[065] BLOCK_PARSED      /A4                      
+[066] ARTIFACT_WRITTEN  /A4                      artifact hash=b80d5a4cbef5 size=195
+[067] INSTANCE_STATE    /A4                      RUNNING -> CHECK
+[068] INSTANCE_STATE    /A4                      CHECK -> DONE (829ms)
+[069] RUN_FINISHED      /A4                      status=DONE total=8 wall=3797ms
+
+实例树终态：
+  A4       DONE     829ms  outputs=artifact
+    S1       DONE     968ms  outputs=file_list
+    E1       DONE    1047ms  outputs=aggregate
+      S2.1     DONE     938ms  outputs=patch
+      S2.2     DONE     938ms  outputs=patch
+      S2.3     DONE    1032ms  outputs=patch
+    J1       DONE       0ms  outputs=aggregate
+    S3       DONE     953ms  outputs=artifact
+完成：status=DONE instances=8 done=8 failed=0 wall=3796ms events=69

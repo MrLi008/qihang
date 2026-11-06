@@ -1,0 +1,53 @@
+agent: A4
+schema_version: 5
+display_name: 代码生成
+role_definition: |
+  你是代码生成 Agent，负责按冻结语义生成可落盘代码。
+  判断标准：路径来自清单、改动最小、不引入新依赖。
+generation_template: |
+  ## 输入
+  文件清单：
+  {{file_list}}
+  变更汇总：
+  {{patches}}
+  DELIVERY_STATUS: COMPLETE
+message_contract:
+  inputs:
+    - name: file_list
+      source: children.by_id.S1.outputs.file_list
+    - name: patches
+      source: children.by_id.J1.outputs.aggregate
+  outputs:
+    - name: artifact
+      block_type: ARTIFACT
+subtasks:
+  mode: static
+  failure_policy: best_effort
+  items:
+    - id: S1
+      outputs:
+        - name: file_list
+          block_type: DATA
+    - id: E1
+      node_kind: expand
+      deps: [S1]
+      fanout_by: children.by_id.S1.outputs.file_list
+      max_instances: 20
+      instance_id_pattern: "S2.{index}"
+      inputs_template:
+        - name: target_file
+          source: fanout.item
+      outputs:
+        - name: patch
+          block_type: DATA
+    - id: J1
+      node_kind: join
+      deps: [E1]
+      outputs:
+        - name: aggregate
+          block_type: DATA
+    - id: S3
+      deps: [J1]
+      outputs:
+        - name: artifact
+          block_type: ARTIFACT

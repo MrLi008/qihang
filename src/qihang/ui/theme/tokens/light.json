@@ -1,0 +1,25 @@
+{
+  "name": "light",
+  "color": {
+    "canvas": "#f4f5f7",
+    "surface": "#ffffff",
+    "surface_alt": "#eef1f5",
+    "border": "#d5dae1",
+    "text": "#1f2329",
+    "muted": "#6b7280",
+    "accent": "#2f6fed",
+    "status": {
+      "pending": "#9aa4b2",
+      "ready": "#3b82f6",
+      "running": "#f59e0b",
+      "check": "#8b5cf6",
+      "done": "#16a34a",
+      "failed": "#dc2626",
+      "blocked": "#b45309",
+      "stale": "#6b7280",
+      "cancelled": "#9ca3af"
+    }
+  },
+  "space": { "xs": 4, "sm": 8, "md": 12, "lg": 16 },
+  "radius": { "node": 8, "panel": 6 }
+}

@@ -1,0 +1,64 @@
+
+=== Run R-001-A6 · agent A6 ===
+[001] RUN_STARTED       /A6                      agent=A6
+[002] INSTANCE_CREATED  /A6                      task by=static
+[003] INSTANCE_CREATED  /A6/DECOMPOSE            decompose by=static
+[004] INSTANCE_CREATED  /A6/E2                   dynamic_expand by=static
+[005] INSTANCE_STATE    /A6/DECOMPOSE            PENDING -> READY
+[006] INSTANCE_STATE    /A6/DECOMPOSE            READY -> RUNNING
+[007] LLM_REQUEST       /A6/DECOMPOSE            executor=mock outputs=None
+[008] LLM_RESPONSE      /A6/DECOMPOSE            latency=1137ms tokens=119
+[009] BLOCK_PARSED      /A6/DECOMPOSE            
+[010] ARTIFACT_WRITTEN  /A6/DECOMPOSE            plan hash=838a354cdb9a size=421
+[011] INSTANCE_STATE    /A6/DECOMPOSE            RUNNING -> CHECK
+[012] INSTANCE_STATE    /A6/DECOMPOSE            CHECK -> DONE (1172ms)
+[013] INSTANCE_STATE    /A6/E2                   PENDING -> READY
+[014] INSTANCE_STATE    /A6/E2                   READY -> RUNNING
+[015] INSTANCE_CREATED  /A6/E2/T1                task by=plan
+[016] INSTANCE_CREATED  /A6/E2/T2                task by=plan
+[017] INSTANCE_CREATED  /A6/E2/T3                task by=plan
+[018] EXPAND_PLANNED    /A6/E2                   dynamic count=3 slots=['T1', 'T2', 'T3']
+[019] INSTANCE_STATE    /A6/E2/T1                PENDING -> READY
+[020] INSTANCE_STATE    /A6/E2/T2                PENDING -> READY
+[021] INSTANCE_STATE    /A6/E2/T3                PENDING -> READY
+[022] INSTANCE_STATE    /A6/E2/T1                READY -> RUNNING
+[023] LLM_REQUEST       /A6/E2/T1                executor=mock outputs=['patch']
+[024] INSTANCE_STATE    /A6/E2/T2                READY -> RUNNING
+[025] LLM_REQUEST       /A6/E2/T2                executor=mock outputs=['patch']
+[026] INSTANCE_STATE    /A6/E2/T3                READY -> RUNNING
+[027] LLM_REQUEST       /A6/E2/T3                executor=mock outputs=['patch']
+[028] LLM_RESPONSE      /A6/E2/T3                latency=996ms tokens=61
+[029] BLOCK_PARSED      /A6/E2/T3                
+[030] ARTIFACT_WRITTEN  /A6/E2/T3                patch hash=3c2e4d72c51b size=153
+[031] INSTANCE_STATE    /A6/E2/T3                RUNNING -> CHECK
+[032] INSTANCE_STATE    /A6/E2/T3                CHECK -> DONE (1015ms)
+[033] LLM_RESPONSE      /A6/E2/T2                latency=1034ms tokens=57
+[034] BLOCK_PARSED      /A6/E2/T2                
+[035] ARTIFACT_WRITTEN  /A6/E2/T2                patch hash=59426f35e5bb size=144
+[036] INSTANCE_STATE    /A6/E2/T2                RUNNING -> CHECK
+[037] INSTANCE_STATE    /A6/E2/T2                CHECK -> DONE (1047ms)
+[038] LLM_RESPONSE      /A6/E2/T1                latency=1154ms tokens=57
+[039] BLOCK_PARSED      /A6/E2/T1                
+[040] ARTIFACT_WRITTEN  /A6/E2/T1                patch hash=9bb469677778 size=145
+[041] INSTANCE_STATE    /A6/E2/T1                RUNNING -> CHECK
+[042] INSTANCE_STATE    /A6/E2/T1                CHECK -> DONE (1172ms)
+[043] JOIN_DONE         /A6/E2                   expand coverage=3/3 failures=[]
+[044] INSTANCE_STATE    /A6/E2                   RUNNING -> DONE (1172ms)
+[045] INSTANCE_STATE    /A6                      PENDING -> READY
+[046] INSTANCE_STATE    /A6                      READY -> RUNNING
+[047] LLM_REQUEST       /A6                      executor=mock outputs=['artifact']
+[048] LLM_RESPONSE      /A6                      latency=849ms tokens=263
+[049] BLOCK_PARSED      /A6                      
+[050] ARTIFACT_WRITTEN  /A6                      artifact hash=3b219062ec02 size=189
+[051] INSTANCE_STATE    /A6                      RUNNING -> CHECK
+[052] INSTANCE_STATE    /A6                      CHECK -> DONE (859ms)
+[053] RUN_FINISHED      /A6                      status=DONE total=6 wall=3203ms
+
+实例树终态：
+  A6       DONE     859ms  outputs=artifact
+    DECOMPOSE DONE    1172ms  outputs=plan
+    E2       DONE    1172ms  outputs=aggregate
+      T1       DONE    1172ms  outputs=patch
+      T2       DONE    1047ms  outputs=patch
+      T3       DONE    1015ms  outputs=patch
+完成：status=DONE instances=6 done=6 failed=0 wall=3218ms events=53

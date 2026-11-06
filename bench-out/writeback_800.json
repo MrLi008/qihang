@@ -1,0 +1,56 @@
+{
+  "spike": "S-3",
+  "generated_at": "2026-11-05T18:17:22+08:00",
+  "python": "3.11.7 (CPython)",
+  "parameters": {
+    "instances": 800,
+    "writes_per_instance": 3,
+    "repeat": 10,
+    "sqlite": "WAL + synchronous=NORMAL，单写者（属主线程 40352）"
+  },
+  "scenario_a_single_batch": {
+    "batch_rows": 800,
+    "batches": 10,
+    "rows_written": 8000,
+    "batch_ms": [
+      0.935,
+      0.92,
+      1.032,
+      0.909,
+      0.929,
+      0.948,
+      0.94,
+      0.998,
+      0.949,
+      1.084
+    ],
+    "p50_ms": 0.94,
+    "p99_ms": 1.084,
+    "max_ms": 1.084
+  },
+  "scenario_b_backlog": {
+    "total_rows": 2400,
+    "rows_written": 2400,
+    "batch_size": 200,
+    "batches": 12,
+    "enqueue_ms": 5.759,
+    "total_drain_ms": 3.638,
+    "batch_p50_ms": 0.259,
+    "batch_p99_ms": 0.335,
+    "max_lag_ms": 6.099,
+    "max_backlog": 2200,
+    "final_backlog": 0
+  },
+  "owner_thread_guard": {
+    "raised": true,
+    "verdict": "PASS"
+  },
+  "budgets": {
+    "batch_p99_ms_max": 8.0,
+    "index_lag_ms_max": 1000.0
+  },
+  "verdict": {
+    "scenario_a": "PASS",
+    "scenario_b": "PASS"
+  }
+}

@@ -1,0 +1,49 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  core-only:
+    # 不安装 PyQt：core 必须能独立测试（硬约束 6）
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install (core + dev only, no ui extra)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Assert PyQt is absent
+        run: python -c "import importlib.util,sys; sys.exit(0 if importlib.util.find_spec('PyQt6') is None else 1)"
+      - name: Layering firewall
+        run: python -m pytest tests/test_layering.py -v
+      - name: Core tests
+        run: python -m pytest tests/unit tests/e2e -m "not ui" -v
+      - name: Theme / UI-thread static checks (source scan works without Qt)
+        run: |
+          python tools/check_theme.py
+          python tools/check_ui_thread.py
+      - name: Benchmarks (short form, must exit 0)
+        run: |
+          python tools/bench_tree_5000.py --nodes 5000 --repeat 1 --out bench-out/tree.json
+          python tools/bench_writeback_800.py --instances 800 --writes 3 --repeat 2 --out bench-out/writeback.json
+
+  ui-qt:
+    runs-on: windows-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install with ui-qt extra
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[ui-qt,dev]"
+      - name: All tests (includes GUI smoke)
+        run: python -m pytest -v

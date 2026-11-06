@@ -1,0 +1,16 @@
+agent: A5
+schema_version: 5
+display_name: 测试
+role_definition: |
+  你负责为生成的代码补齐测试并给出通过率。
+generation_template: |
+  ## 测试结论
+  - 用例：12 通过 / 12 总数
+  DELIVERY_STATUS: COMPLETE
+message_contract:
+  outputs:
+    - name: artifact
+      block_type: ARTIFACT
+subtasks:
+  mode: static
+  items: []

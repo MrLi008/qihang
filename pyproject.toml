@@ -1,0 +1,72 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qihang"
+dynamic = ["version"]
+description = "契衡 · 智能体协议编排与校验平台（阶段一：Mock 执行器 + 可观测 DAG）"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "qihang contributors" }]
+maintainers = [{ name = "qihang contributors" }]
+keywords = ["agent", "orchestration", "dag", "workflow", "pyqt6"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Environment :: Console",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "ruamel.yaml>=0.18",
+]
+
+[project.optional-dependencies]
+validation = ["jsonschema>=4.20"]
+ui-qt = ["PyQt6==6.6.1", "PyQt6-Qt6==6.6.2"]
+dev = [
+    "pytest>=7.4",
+    "pytest-qt>=4.2",
+    "coverage[toml]>=7.3",
+    "hypothesis>=6.90",
+    "ruff>=0.1",
+    "build>=1.2",
+    "twine>=5.0",
+]
+
+[project.urls]
+Homepage = "https://pypi.org/project/qihang/"
+
+[project.scripts]
+qihang = "qihang.cli:main"
+qihang-gui = "qihang.ui.main:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "qihang.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+qihang = ["specs/*.yaml", "ui/theme/*.qss", "ui/theme/tokens/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"
+markers = [
+    "ui: 需要 PyQt6 的界面用例",
+]
+
+[tool.coverage.run]
+source = ["qihang.core"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"

@@ -1,0 +1,10 @@
+include LICENSE
+include README.md
+include CHANGELOG.md
+include pyproject.toml
+recursive-include src/qihang/specs *.yaml
+recursive-include src/qihang/ui/theme *.qss *.json
+prune src/qihang.egg-info
+recursive-exclude src/qihang.egg-info *
+prune build
+prune dist

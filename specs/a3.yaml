@@ -1,0 +1,18 @@
+agent: A3
+schema_version: 5
+display_name: 冻结语义
+role_definition: |
+  你负责把需求冻结成可执行的语义约定。
+generation_template: |
+  ## 冻结语义
+  - 路径：/auth/login
+  - 输入：用户名、密码
+  - 输出：会话 token
+  DELIVERY_STATUS: COMPLETE
+message_contract:
+  outputs:
+    - name: artifact
+      block_type: ARTIFACT
+subtasks:
+  mode: static
+  items: []

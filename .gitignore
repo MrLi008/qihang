@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# 本地运行产物（journal / tree / sqlite 投影）
+.qihang/
+bench-out/*.sqlite
+bench-out/*.sqlite-*
+bench-out/__pycache__/
+
+# 虚拟环境
+.venv/
+.venv-ui/
