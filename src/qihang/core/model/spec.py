@@ -49,7 +49,7 @@ class SubtaskNode:
 
 @dataclass(frozen=True, slots=True)
 class ExecutionLimits:
-    """执行参数占位：阶段一只解析与透传，不强制超时/重试/预算。"""
+    """执行参数占位：阶段一只解析并保留，不强制超时/重试/预算。"""
 
     timeout_s: float | None = None
     max_attempts: int | None = None

@@ -107,3 +107,22 @@ def test_dynamic_expand_without_declaration_reports_path() -> None:
 
 def test_schema_resource_is_present() -> None:
     assert SCHEMA_PATH.exists()
+
+
+def test_missing_version_defaults_to_5() -> None:
+    spec = parse_spec({"agent": "V5", "subtasks": {"mode": "static", "items": []}}, source="v5.yaml")
+    assert spec.schema_version == 5
+
+
+@pytest.mark.parametrize("engine", ENGINES)
+def test_v4_aliases_still_load(engine: str) -> None:
+    data = {
+        "agent": "V4",
+        "schema_version": 4,
+        "message_contract": {"inputs": [{"as": "x", "from": "project.key"}]},
+        "subtasks": {"mode": "static", "items": []},
+    }
+    ensure_spec_valid(data, source="v4.yaml", engine=engine)
+    spec = parse_spec(data, source="v4.yaml")
+    assert spec.inputs[0].name == "x"
+    assert spec.inputs[0].source == "project.key"

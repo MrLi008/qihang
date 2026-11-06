@@ -183,7 +183,7 @@
     "execution": {
       "type": "object",
       "additionalProperties": false,
-      "description": "执行参数占位：阶段一只解析与透传，不强制超时/重试/预算。",
+      "description": "执行参数占位：阶段一只解析并保留，不强制超时/重试/预算。",
       "properties": {
         "timeout_s": {"type": ["number", "null"], "minimum": 0},
         "max_attempts": {"type": ["integer", "null"], "minimum": 1},

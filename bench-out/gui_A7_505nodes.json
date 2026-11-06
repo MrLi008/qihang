@@ -3,32 +3,32 @@
   "status": "DONE",
   "instances": 505,
   "delay_s": 0.02,
-  "wall_ms": 1812,
+  "wall_ms": 1750,
   "heartbeat_ms": {
-    "p50": 9.37,
-    "p99": 138.82,
-    "max": 138.82,
-    "samples": 16
-  },
-  "dag_render_ms": {
-    "p50": 10.79,
-    "p99": 125.35,
-    "max": 125.35,
+    "p50": 9.43,
+    "p99": 124.06,
+    "max": 124.06,
     "samples": 15
   },
-  "fps_estimate": 8.8,
+  "dag_render_ms": {
+    "p50": 11.14,
+    "p99": 127.53,
+    "max": 127.53,
+    "samples": 14
+  },
+  "fps_estimate": 8.7,
   "tree_batch_ms": {
-    "p50": 3.47,
-    "p99": 21.77,
-    "max": 21.77,
-    "samples": 15,
-    "total": 76.25
+    "p50": 3.44,
+    "p99": 12.59,
+    "max": 12.59,
+    "samples": 14,
+    "total": 54.36
   },
   "events": {
     "total": 4542,
-    "drain_batches": 15,
+    "drain_batches": 14,
     "max_batch": 400,
-    "avg_batch": 302.8
+    "avg_batch": 324.4
   },
   "memory_peak_mb": 3.9,
   "thresholds": {

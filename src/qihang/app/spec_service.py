@@ -52,8 +52,11 @@ def save_agent_spec(
     target = Path(specs_dir) / f"{spec.agent_id.lower()}.yaml"
     if target.exists() and not overwrite:
         raise SpecError(f"同名 spec 已存在：{target.name}（勾选覆盖或换一个 agent 标识）", code="SPEC_EXISTS")
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(_dump_yaml(data), encoding="utf-8")
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(_dump_yaml(data), encoding="utf-8")
+    except OSError as exc:
+        raise SpecError(f"写入 {target.name} 失败：{exc}", code="SPEC_IO") from exc
     return target
 
 

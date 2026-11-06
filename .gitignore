@@ -16,3 +16,6 @@ bench-out/__pycache__/
 # 虚拟环境
 .venv/
 .venv-ui/
+
+# 包内 schema 必须纳入版本控制（仓库根 .gitignore 忽略了 *.json）
+!src/qihang/schemas/*.json

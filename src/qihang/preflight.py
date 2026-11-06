@@ -29,8 +29,8 @@ def require_core() -> None:
     if _has("ruamel.yaml") or _has("yaml"):
         if not _has("jsonschema"):
             sys.stderr.write(
-                "提示：未检测到 jsonschema。阶段一 CLI 不会用到它，可暂不安装；"
-                "需要时执行 python -m pip install \"jsonschema>=4.20\"。\n"
+                "提示：未检测到 jsonschema，将使用内置轻量校验器；需要严格 JSON Schema 校验时执行 "
+                "python -m pip install \"jsonschema>=4.20\"（或安装 [validation] extras）。\n"
             )
         return
     sys.stderr.write(
