@@ -11,6 +11,7 @@ from pathlib import Path
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
 SPECS_DIR = PACKAGE_ROOT / "specs"
+SCHEMAS_DIR = PACKAGE_ROOT / "schemas"
 
 
 def _dev_repo_root() -> Path | None:
@@ -31,3 +32,9 @@ def default_specs_dir() -> Path:
 def default_runs_dir() -> Path:
     root = _dev_repo_root() or Path.cwd()
     return root / ".qihang" / "runs"
+
+
+def default_bench_dir() -> Path:
+    """压测产物目录：源码仓库内落在 `bench-out/`，安装后落在当前目录。"""
+    root = _dev_repo_root() or Path.cwd()
+    return root / "bench-out"

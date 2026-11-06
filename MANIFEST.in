@@ -2,7 +2,11 @@ include LICENSE
 include README.md
 include CHANGELOG.md
 include pyproject.toml
+recursive-include specs *.yaml
+recursive-include tests *.py
+recursive-include tools *.py
 recursive-include src/qihang/specs *.yaml
+recursive-include src/qihang/schemas *.json
 recursive-include src/qihang/ui/theme *.qss *.json
 prune src/qihang.egg-info
 recursive-exclude src/qihang.egg-info *

@@ -392,6 +392,7 @@ class Orchestrator:
             outputs=tuple(OutputDeclView(d.name, d.block_type) for d in decls),
             agent_id=spec.agent_id,
             role_definition=spec.role_definition,
+            parameters=dict(spec.parameters),
         )
         self._to(inst, Status.RUNNING)
         self._bus.emit(

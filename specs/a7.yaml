@@ -1,0 +1,63 @@
+agent: A7
+schema_version: 5
+display_name: 规模验证
+role_definition: |
+  你是规模验证 Agent，负责把 S1 产出的清单分发为大规模子任务，并汇总覆盖率。
+  判断标准：实例数来自配置（parameters.list_size / E1.max_instances）、清单完整、JOIN 覆盖率为 100%。
+acceptance_criteria:
+  - S1 产出的清单条目数等于 parameters.list_size
+  - E1 展开出的实例数不超过 max_instances
+  - J1 的 coverage 为 N/N
+generation_template: |
+  ## 规模汇总
+  清单：
+  {{file_list}}
+  聚合：
+  {{aggregate}}
+  DELIVERY_STATUS: COMPLETE
+message_contract:
+  inputs:
+    - name: file_list
+      source: children.by_id.S1.outputs.file_list
+    - name: aggregate
+      source: children.by_id.J1.outputs.aggregate
+  outputs:
+    - name: artifact
+      block_type: ARTIFACT
+parameters:
+  list_size: 500
+execution:
+  timeout_s: 60
+  max_attempts: 1
+  budget_tokens: null
+subtasks:
+  mode: static
+  failure_policy: best_effort
+  items:
+    - id: S1
+      outputs:
+        - name: file_list
+          block_type: DATA
+    - id: E1
+      node_kind: expand
+      deps: [S1]
+      fanout_by: children.by_id.S1.outputs.file_list
+      max_instances: 500
+      instance_id_pattern: "S2.{index}"
+      inputs_template:
+        - name: target_file
+          source: fanout.item
+      outputs:
+        - name: patch
+          block_type: DATA
+    - id: J1
+      node_kind: join
+      deps: [E1]
+      outputs:
+        - name: aggregate
+          block_type: DATA
+    - id: S3
+      deps: [J1]
+      outputs:
+        - name: artifact
+          block_type: ARTIFACT

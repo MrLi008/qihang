@@ -41,7 +41,8 @@ class MockExecutor:
     ) -> None:
         self._clock = clock
         self._base = base_delay_s
-        self._jitter = jitter_s
+        # 抖动随基础耗时等比收缩：压测把 delay 压到 0.02 时不会被固定 0.2 的抖动淹没。
+        self._jitter = min(jitter_s, base_delay_s * 0.25) if base_delay_s > 0 else 0.0
         self._seed = seed
         self._fail_inject = dict(fail_inject or {})
         self._files = tuple(files)
@@ -74,6 +75,10 @@ class MockExecutor:
 
     def _body_for(self, output: OutputDecl, req: GenerateRequest) -> str:
         if output.name == "file_list":
+            list_size = req.parameters.get("list_size")
+            if list_size is not None:
+                count = max(0, int(list_size))
+                return json.dumps([f"file_{i:03d}.py" for i in range(1, count + 1)], ensure_ascii=False)
             return json.dumps(list(self._files), ensure_ascii=False)
         if output.name == "aggregate":
             return json.dumps(

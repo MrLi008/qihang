@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from concurrent.futures import Future
 from dataclasses import dataclass, field
-from typing import Any, Callable, Protocol, Sequence, TypeVar
+from typing import Any, Callable, Mapping, Protocol, Sequence, TypeVar
 
 T = TypeVar("T")
 
@@ -60,6 +60,7 @@ class GenerateRequest:
     outputs: tuple[OutputDeclView, ...] = ()
     agent_id: str = ""
     role_definition: str = ""
+    parameters: Mapping[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)

@@ -54,7 +54,7 @@ version = { attr = "qihang.__version__" }
 where = ["src"]
 
 [tool.setuptools.package-data]
-qihang = ["specs/*.yaml", "ui/theme/*.qss", "ui/theme/tokens/*.json"]
+qihang = ["specs/*.yaml", "schemas/*.json", "ui/theme/*.qss", "ui/theme/tokens/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

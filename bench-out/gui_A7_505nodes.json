@@ -1,0 +1,43 @@
+{
+  "scenario": "A7",
+  "status": "DONE",
+  "instances": 505,
+  "delay_s": 0.02,
+  "wall_ms": 1812,
+  "heartbeat_ms": {
+    "p50": 9.37,
+    "p99": 138.82,
+    "max": 138.82,
+    "samples": 16
+  },
+  "dag_render_ms": {
+    "p50": 10.79,
+    "p99": 125.35,
+    "max": 125.35,
+    "samples": 15
+  },
+  "fps_estimate": 8.8,
+  "tree_batch_ms": {
+    "p50": 3.47,
+    "p99": 21.77,
+    "max": 21.77,
+    "samples": 15,
+    "total": 76.25
+  },
+  "events": {
+    "total": 4542,
+    "drain_batches": 15,
+    "max_batch": 400,
+    "avg_batch": 302.8
+  },
+  "memory_peak_mb": 3.9,
+  "thresholds": {
+    "heartbeat_p99_ms": 100,
+    "fps": 30
+  },
+  "judgement": {
+    "heartbeat": "不达标",
+    "fps": "不达标"
+  },
+  "bottleneck_hint": "DAG 布局重排：每批新增节点触发 _relayout 全量重排与边重算；DAG 单批渲染超过 50ms，主线程被场景重排占住"
+}

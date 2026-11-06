@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
 from qihang.core.model.enums import NodeKind
 
@@ -47,6 +48,15 @@ class SubtaskNode:
 
 
 @dataclass(frozen=True, slots=True)
+class ExecutionLimits:
+    """执行参数占位：阶段一只解析与透传，不强制超时/重试/预算。"""
+
+    timeout_s: float | None = None
+    max_attempts: int | None = None
+    budget_tokens: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class DecompositionSpec:
     output_schema: str = "subtask_plan_v1"
     allowed_agent_refs: tuple[str, ...] = ()
@@ -61,6 +71,7 @@ class AgentSpec:
     schema_version: int = 5
     display_name: str = ""
     role_definition: str = ""
+    acceptance_criteria: tuple[str, ...] = ()
     generation_template: str = ""
     inputs: tuple[InputBinding, ...] = ()
     outputs: tuple[OutputDecl, ...] = field(default_factory=lambda: (OutputDecl("artifact"),))
@@ -70,6 +81,8 @@ class AgentSpec:
     dynamic_expand: bool = False
     expandables: tuple[SubtaskNode, ...] = ()
     failure_policy: str = "best_effort"
+    execution: ExecutionLimits = field(default_factory=ExecutionLimits)
+    parameters: dict[str, Any] = field(default_factory=dict)
 
     def subtask_by_id(self, sid: str) -> SubtaskNode | None:
         for item in (*self.subtasks, *self.expandables):

@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qihang.local/schemas/agent_spec.schema.json",
+  "title": "契衡 Agent Spec",
+  "description": "Agent 定义文件（*.yaml）的机器可读契约。字段说明见 docs/07-元数据定义.md。",
+  "type": "object",
+  "required": ["agent"],
+  "additionalProperties": false,
+  "properties": {
+    "agent": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+      "description": "Agent 标识；运行期路径的根节点（/A4）。"
+    },
+    "schema_version": {
+      "type": "integer",
+      "minimum": 4,
+      "maximum": 5,
+      "default": 5,
+      "description": "定义版本；缺省按 5 解析。"
+    },
+    "display_name": {"type": "string", "default": "", "description": "界面展示名。"},
+    "role_definition": {"type": "string", "description": "角色定义与判断标准（自然语言）。"},
+    "acceptance_criteria": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "可枚举的验收/判断标准（扩展点）。"
+    },
+    "generation_template": {
+      "type": "string",
+      "description": "根任务提示词模板，变量来自 message_contract.inputs。"
+    },
+    "message_contract": {"$ref": "#/$defs/messageContract"},
+    "subtasks": {"$ref": "#/$defs/subtaskBlock"},
+    "decomposition": {"$ref": "#/$defs/decomposition"},
+    "dynamic_expand": {
+      "type": "boolean",
+      "default": false,
+      "description": "能力标记：允许运行期动态拆解并展开。"
+    },
+    "expandables": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/subtaskNode"},
+      "description": "动态展开点声明，仅 dynamic_expand=true 时使用。"
+    },
+    "execution": {"$ref": "#/$defs/execution"},
+    "parameters": {
+      "type": "object",
+      "description": "执行器/场景专用参数（自由扩展点），如 mock 的 list_size。"
+    }
+  },
+  "$defs": {
+    "outputDecl": {
+      "description": "产物声明：字符串等价于 name + block_type=ARTIFACT。",
+      "oneOf": [
+        {"type": "string", "minLength": 1},
+        {"$ref": "#/$defs/outputObject"}
+      ]
+    },
+    "outputObject": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "block_type": {
+          "type": "string",
+          "enum": ["ARTIFACT", "DATA", "TEXT", "PLAN"],
+          "default": "ARTIFACT"
+        }
+      }
+    },
+    "inputBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "as": {"type": "string", "minLength": 1, "description": "name 的旧别名（schema_version 4）。"},
+        "to": {"type": "string", "minLength": 1, "description": "name 的旧别名（schema_version 4）。"},
+        "source": {"type": "string", "minLength": 1, "description": "DataRef 源 DSL。"},
+        "from": {"type": "string", "minLength": 1, "description": "source 的旧别名（schema_version 4）。"},
+        "literal": {"type": "string", "description": "直接量；与 source 互斥。"}
+      },
+      "description": "必须提供 name/as/to 之一，以及 source/from 或 literal 之一（语义校验负责）。"
+    },
+    "subtaskNode": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.]*$"
+        },
+        "node_kind": {
+          "type": "string",
+          "enum": ["task", "expand", "join", "decompose", "dynamic_expand"],
+          "default": "task"
+        },
+        "execution_mode": {
+          "type": "string",
+          "enum": ["single_generate", "review_only", "decompose"],
+          "default": "single_generate"
+        },
+        "deps": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1, "pattern": "^[A-Za-z][A-Za-z0-9_.]*$"}
+        },
+        "fanout_by": {
+          "type": "string",
+          "minLength": 1,
+          "description": "静态展开的数据源 DataRef，必须指向清单类产物。"
+        },
+        "max_instances": {"type": "integer", "minimum": 1, "maximum": 20000, "default": 20},
+        "instance_id_pattern": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.{}-]+$",
+          "default": "S{index}",
+          "description": "实例 id 模板，必须包含 {index} 或 {key}。"
+        },
+        "inputs_template": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/inputBinding"}
+        },
+        "outputs": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/outputDecl"}
+        },
+        "validator_key": {"type": "string", "minLength": 1}
+      }
+    },
+    "subtaskBlock": {
+      "type": "object",
+      "required": ["mode"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": {"type": "string", "enum": ["static", "dynamic"]},
+        "failure_policy": {
+          "type": "string",
+          "enum": ["best_effort", "strict"],
+          "default": "best_effort"
+        },
+        "items": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/subtaskNode"}
+        }
+      }
+    },
+    "messageContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "inputs": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/inputBinding"}
+        },
+        "outputs": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/outputDecl"}
+        }
+      }
+    },
+    "decomposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "output_schema": {
+          "type": "string",
+          "enum": ["subtask_plan_v1"],
+          "default": "subtask_plan_v1"
+        },
+        "allowed_agent_refs": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        },
+        "max_depth": {"type": "integer", "minimum": 1, "maximum": 8, "default": 2},
+        "max_fanout": {"type": "integer", "minimum": 1, "maximum": 64, "default": 8},
+        "require_acceptance_ref": {"type": "boolean", "default": false}
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "执行参数占位：阶段一只解析与透传，不强制超时/重试/预算。",
+      "properties": {
+        "timeout_s": {"type": ["number", "null"], "minimum": 0},
+        "max_attempts": {"type": ["integer", "null"], "minimum": 1},
+        "budget_tokens": {"type": ["integer", "null"], "minimum": 0}
+      }
+    }
+  }
+}

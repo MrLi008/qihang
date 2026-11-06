@@ -4,6 +4,8 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+dist-*/
+
 
 # 本地运行产物（journal / tree / sqlite 投影）
 .qihang/

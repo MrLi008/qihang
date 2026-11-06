@@ -20,10 +20,17 @@ from qihang.core.model.enums import NodeKind
 from qihang.core.model.spec import (
     AgentSpec,
     DecompositionSpec,
+    ExecutionLimits,
     InputBinding,
     OutputDecl,
     SubtaskNode,
 )
+from qihang.core.runtime.spec_validation import ensure_spec_valid
+
+
+def load_spec_data(path: Path) -> dict[str, Any]:
+    """读取并返回 spec 原始映射（供 CLI/GUI 校验与导入复用）。"""
+    return _read_yaml(Path(path))
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
@@ -88,9 +95,9 @@ def _node(raw: Mapping[str, Any]) -> SubtaskNode:
 
 
 def parse_spec(data: Mapping[str, Any], *, source: str = "<inline>") -> AgentSpec:
+    ensure_spec_valid(data, source=source)
+
     agent_id = str(data.get("agent") or "")
-    if not agent_id:
-        raise SpecError(f"{source}: 缺少 agent 字段", code="SPEC_AGENT")
 
     subtasks_block = data.get("subtasks") or {}
     mode = str(subtasks_block.get("mode", "static")) if isinstance(subtasks_block, dict) else "static"
@@ -98,17 +105,41 @@ def parse_spec(data: Mapping[str, Any], *, source: str = "<inline>") -> AgentSpe
     expandables = tuple(_node(x) for x in (data.get("expandables") or ()))
 
     ids = [n.id for n in items] + [n.id for n in expandables]
-    if any(not i for i in ids):
-        raise SpecError(f"{source}: 子任务缺少 id", code="SPEC_NODE_ID")
-    if len(set(ids)) != len(ids):
-        raise SpecError(f"{source}: 子任务 id 重复: {ids}", code="SPEC_NODE_DUP")
+    seen: dict[str, str] = {}
+    for index, node in enumerate(items):
+        if node.id in seen:
+            raise SpecError(
+                f"{source}: subtasks.items[{index}].id 重复（首次出现于 {seen[node.id]}）: {node.id}",
+                code="SPEC_NODE_DUP",
+            )
+        seen[node.id] = f"subtasks.items[{index}]"
+    for index, node in enumerate(expandables):
+        if node.id in seen:
+            raise SpecError(
+                f"{source}: expandables[{index}].id 重复（首次出现于 {seen[node.id]}）: {node.id}",
+                code="SPEC_NODE_DUP",
+            )
+        seen[node.id] = f"expandables[{index}]"
+
     known = set(ids)
-    for node in items:
-        for dep in node.deps:
+    for index, node in enumerate(items):
+        for dep_index, dep in enumerate(node.deps):
             if dep not in known:
-                raise SpecError(f"{source}: 子任务 {node.id} 依赖未知节点 {dep}", code="SPEC_DEP")
-        if node.node_kind is NodeKind.EXPAND and not node.fanout_by:
-            raise SpecError(f"{source}: expand 节点 {node.id} 缺少 fanout_by", code="SPEC_FANOUT")
+                raise SpecError(
+                    f"{source}: subtasks.items[{index}].deps[{dep_index}] 依赖未知节点 {dep}",
+                    code="SPEC_DEP",
+                )
+        if node.node_kind is NodeKind.EXPAND:
+            if not node.fanout_by:
+                raise SpecError(
+                    f"{source}: subtasks.items[{index}].fanout_by 缺失（expand 节点必须声明 fanout_by）",
+                    code="SPEC_FANOUT",
+                )
+            _check_pattern(node, f"subtasks.items[{index}]", source)
+
+    for index, node in enumerate(expandables):
+        if node.node_kind in (NodeKind.EXPAND, NodeKind.DYNAMIC_EXPAND):
+            _check_pattern(node, f"expandables[{index}]", source)
 
     dec_raw = data.get("decomposition")
     decomposition = None
@@ -122,14 +153,26 @@ def parse_spec(data: Mapping[str, Any], *, source: str = "<inline>") -> AgentSpe
         )
 
     dynamic_expand = bool(data.get("dynamic_expand", False))
-    if dynamic_expand and (decomposition is None or not expandables):
-        raise SpecError(f"{source}: dynamic_expand 需要 decomposition 与 expandables", code="SPEC_DYNAMIC")
+    if dynamic_expand and decomposition is None:
+        raise SpecError(f"{source}: dynamic_expand=true 需要 decomposition 声明", code="SPEC_DYNAMIC")
+    if dynamic_expand and not expandables:
+        raise SpecError(f"{source}: dynamic_expand=true 需要至少一个 expandables 节点", code="SPEC_DYNAMIC")
+
+    exec_raw = data.get("execution")
+    execution = ExecutionLimits()
+    if isinstance(exec_raw, Mapping):
+        execution = ExecutionLimits(
+            timeout_s=float(exec_raw["timeout_s"]) if exec_raw.get("timeout_s") is not None else None,
+            max_attempts=int(exec_raw["max_attempts"]) if exec_raw.get("max_attempts") is not None else None,
+            budget_tokens=int(exec_raw["budget_tokens"]) if exec_raw.get("budget_tokens") is not None else None,
+        )
 
     return AgentSpec(
         agent_id=agent_id,
         schema_version=int(data.get("schema_version", 5)),
         display_name=str(data.get("display_name", "")),
         role_definition=str(data.get("role_definition", "")),
+        acceptance_criteria=tuple(str(x) for x in (data.get("acceptance_criteria") or ())),
         generation_template=str(data.get("generation_template", "")),
         inputs=_bindings((data.get("message_contract") or {}).get("inputs")),
         outputs=_outputs((data.get("message_contract") or {}).get("outputs")),
@@ -141,7 +184,18 @@ def parse_spec(data: Mapping[str, Any], *, source: str = "<inline>") -> AgentSpe
         failure_policy=str(subtasks_block.get("failure_policy", "best_effort"))
         if isinstance(subtasks_block, Mapping)
         else "best_effort",
+        execution=execution,
+        parameters=dict(data.get("parameters") or {}),
     )
+
+
+def _check_pattern(node: SubtaskNode, path: str, source: str) -> None:
+    pattern = node.instance_id_pattern
+    if "{index}" not in pattern and "{key}" not in pattern:
+        raise SpecError(
+            f"{source}: {path}.instance_id_pattern 必须包含 {{index}} 或 {{key}}，当前为 {pattern!r}",
+            code="SPEC_FANOUT",
+        )
 
 
 class SpecLoader:

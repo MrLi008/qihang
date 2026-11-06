@@ -1,7 +1,7 @@
 {
   "spike": "S-1",
-  "generated_at": "2026-11-05T18:17:22+08:00",
-  "python": "3.11.7 (CPython)",
+  "generated_at": "2026-11-06T10:29:31+08:00",
+  "python": "3.11.8 (CPython)",
   "parameters": {
     "nodes": 5000,
     "repeat": 3,
@@ -12,22 +12,22 @@
     "actual_nodes": 5000,
     "root_children": 50,
     "build_ms": [
-      35.759,
-      36.918,
-      36.438
+      29.342,
+      29.647,
+      28.995
     ],
-    "build_ms_p50": 36.438,
-    "build_nodes_per_s": 137469.5,
+    "build_ms_p50": 29.342,
+    "build_nodes_per_s": 170485.3,
     "lookup_us_p50": 0.1,
-    "lookup_us_p99": 0.3,
+    "lookup_us_p99": 0.2,
     "incremental_ms": [
-      0.547,
-      0.678,
+      0.542,
+      0.68,
       0.482
     ],
-    "incremental_ms_p50": 0.547,
-    "incremental_ms_p99": 0.678,
-    "snapshot_ms_p50": 68.658,
+    "incremental_ms_p50": 0.542,
+    "incremental_ms_p99": 0.68,
+    "snapshot_ms_p50": 67.425,
     "tree_peak_mib": 2.49
   },
   "budgets": {
